@@ -15,7 +15,12 @@ from os.path import join
 import chumpy as ch
 import numpy as np
 
-from fitting.landmarks import landmark_error_3d, load_embedding, mesh_points_by_barycentric_coordinates
+from fitting.landmarks import (
+    landmark_error_3d,
+    load_embedding,
+    load_picked_points,
+    mesh_points_by_barycentric_coordinates,
+)
 from fitting.util import get_unit_factor, load_binary_pickle, safe_mkdir, write_simple_obj
 from sbody.alignment.objectives import sample_from_mesh
 from sbody.mesh import Mesh
@@ -194,8 +199,15 @@ def run_fitting():
     scan = Mesh(filename=scan_path)
     print("loaded scan from:", scan_path)
 
-    lmk_3d = np.load(scan_lmk_path)
+    if scan_lmk_path.endswith('.pp'):
+        lmk_3d = load_picked_points(scan_lmk_path)
+    elif scan_lmk_path.endswith('.npy'):
+        lmk_3d = np.load(scan_lmk_path)
+    else:
+        raise ValueError(f"Unsupported landmark file format: {scan_lmk_path}")
+
     print("loaded scan landmark from:", scan_lmk_path)
+    print(f"shape of scan landmarks: {lmk_3d.shape}, {lmk_3d[0]}")
 
     # model
     model_path = './models/generic_model.pkl'  # change to 'female_model.pkl' or 'male_model.pkl', if gender is known
@@ -266,12 +278,12 @@ def run_fitting():
     )  # options
 
     # write result
-    output_path = join(output_dir, 'fit_scan_result.obj')
+    output_path = join(output_dir, f'{scan_path.split("/")[-1]}_fit_scan_result.obj')
     write_simple_obj(mesh_v=mesh_v, mesh_f=mesh_f, filepath=output_path, verbose=False)
     print('output mesh saved to: ', output_path)
 
     # output scaled scan for reference (output scan fit and the scan should be spatially aligned)
-    output_path = join(output_dir, 'scan_scaled.obj')
+    output_path = join(output_dir, f'{scan_path.split("/")[-1]}_scan_scaled.obj')
     write_simple_obj(mesh_v=scan.v, mesh_f=scan.f, filepath=output_path, verbose=False)
 
 
