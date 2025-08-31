@@ -1,17 +1,19 @@
-#__all__ = ['landmark_function', 'scan_to_mesh_squared_function',
+# __all__ = ['landmark_function', 'scan_to_mesh_squared_function',
 #           'mesh_to_scan_squared_function', 'scan_to_mesh_function',
 #           'mesh_to_scan_function', 'full_mesh_to_scan_function', 'vecdiff_function']
 
-from scipy.sparse import csc_matrix
-from scipy import array
+import copy
+import random
+
+import numpy as np
 import scipy as sy
 import scipy.sparse as sp
-import numpy as np
-import sbody.alignment.mesh_distance.mesh_distance as mesh_distance
-import random
-import copy
+from numpy import array
+from scipy.sparse import csc_matrix
 
+import sbody.alignment.mesh_distance.mesh_distance as mesh_distance
 from sbody.matlab import *
+
 
 def co3(x):
     return matlab.bsxfun(np.add, row(np.arange(3)), col(3 * (x)))
@@ -27,7 +29,7 @@ def sample_categorical(samples, dist):
     upper = np.cumsum(a)
     lower = upper - a
     for value in range(len(a)):
-        b[lower[value]: upper[value]] = value
+        b[lower[value] : upper[value]] = value
     np.random.shuffle(b)
     return b
 
@@ -43,19 +45,21 @@ def sample_from_mesh(mesh, sample_type='edge_midpoints', num_samples=10000, vert
             IS = co3(array(range(0, sample_ind.size)))
             JS = co3(sample_ind)
             VS = np.ones(IS.size)
-            point2sample = matlab.sparse(IS.flatten(), JS.flatten(), VS.flatten(), 3 * sample_ind.size, 3 * mesh.v.shape[0])
+            point2sample = matlab.sparse(
+                IS.flatten(), JS.flatten(), VS.flatten(), 3 * sample_ind.size, 3 * mesh.v.shape[0]
+            )
             sample_spec = {'point2sample': point2sample}
     elif sample_type == 'uniformly-from-vertices':
         # Note: this will never oversample: when num_samples is greater than number of verts,
         # then the vert indices are all included (albeit shuffled), and none left out
         # (because of how random.sample works)
 
-        #print("SEED IS", seed, 'SIZE is', mesh.v.shape[0], '#elements is', int(min(num_samples, mesh.v.shape[0])))
+        # print("SEED IS", seed, 'SIZE is', mesh.v.shape[0], '#elements is', int(min(num_samples, mesh.v.shape[0])))
         random.seed(seed)  # XXX uncomment when not debugging
         np.random.seed(seed)
-        #sample_ind = np.array(random.sample(xrange(mesh.v.shape[0]), int(min(num_samples, mesh.v.shape[0]))))
+        # sample_ind = np.array(random.sample(xrange(mesh.v.shape[0]), int(min(num_samples, mesh.v.shape[0]))))
         sample_ind = np.array(random.sample(range(mesh.v.shape[0]), int(min(num_samples, mesh.v.shape[0]))))
-        #print("FIRST ELEMENTS ARE", sample_ind[:100])
+        # print("FIRST ELEMENTS ARE", sample_ind[:100])
         IS = co3(array(range(0, sample_ind.size)))
         JS = co3(sample_ind)
         VS = np.ones(IS.size)
@@ -68,7 +72,7 @@ def sample_from_mesh(mesh, sample_type='edge_midpoints', num_samples=10000, vert
             JS = tri
             VS = np.ones(IS.size) / 3
             area2weight = matlab.sparse(IS, JS, VS, tri.size, mesh.f.shape[0])
-            bary = np.tile([[.5, .5, 0], [.5, 0, .5], [0, .5, .5]], 1, mesh.f.shape[0])
+            bary = np.tile([[0.5, 0.5, 0], [0.5, 0, 0.5], [0, 0.5, 0.5]], 1, mesh.f.shape[0])
 
         elif sample_type == 'uniformly-at-random':
             random.seed(seed)  # XXX uncomment when not debugging
